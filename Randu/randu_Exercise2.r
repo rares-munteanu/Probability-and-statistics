@@ -20,8 +20,9 @@ scatterplot3d::scatterplot3d(randu[,1], randu[,2], randu[,3],angle=154)
 #R^2 >0,7 => X
 #coeficientul lui x este nesemnificativ din punct de vedere statistic(folosind testul t)
 cor(vecx,vecy)
-scatter.smooth(x=randu$x, y=randu$y, main="First ~ Second",col=c("red"))
+scatter.smooth(x=vecx, y=vecy, main="First ~ Second",col=c("red"))
 plot(vecx,vecy)
+set.seed(504)
 trainingRowIndex <- sample(1:nrow(randu), 0.8 *nrow(randu))
 trainingData <- randu[trainingRowIndex,]
 testData <- randu[-trainingRowIndex,]
@@ -41,3 +42,26 @@ actual_pred_Multipla <- data.frame(cbind(actualZ = testData$z, predictedZ = pred
 correlation_accuracyMultipla <- cor(actual_pred_Multipla)
 summary(linearModMultipla)
 #z = x*0,06989+y*(-0.06493) + 0,47261
+
+set.seed(100)
+origDist <- runif(400,0,sqrt(3))
+dataFrameNew <- data.frame(cbind(randu,dist = origDist))
+lmDist <- lm(dist~x+y+z, dataFrameNew)
+summary(lmDist)
+
+calculatedOrigDist <- vector("numeric",400)
+for(row in 1:nrow(randu)){
+  x <- randu[row,"x"]
+  y <- randu[row,"y"]
+  z <- randu[row,"z"]
+  calculatedOrigDist[row] <- sqrt(x*x+y*y+z*z)
+}
+dataFrameNew2 <- data.frame(cbind(randu,dist = calculatedOrigDist))
+trainingRowIndex2 <- sample(1:nrow(randu), 0.8*nrow(randu))
+trainingValues <- dataFrameNew2[trainingRowIndex2,]
+testingValues <- dataFrameNew2[-trainingRowIndex2,]
+lmDist2 <- lm(dist~x+y+z, trainingValues)
+predictionsRaza <- predict(lmDist2, testingValues)
+actualR_predR <- data.frame(cbind(actualR = testingValues$dist, predictedR = predictionsRaza))
+cor(actualR_predR)
+summary(lmDist2)

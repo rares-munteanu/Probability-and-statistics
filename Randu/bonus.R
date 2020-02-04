@@ -1,0 +1,3 @@
+frepcomgen <- function(m,n){
+      
+}
