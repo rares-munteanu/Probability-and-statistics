@@ -1,47 +1,205 @@
-n <- as.numeric(readline(prompt="N="))
-m <- as.numeric(readline(prompt="M= "))
-
-xVals1 <- -n:n
-xVals <- sample(xVals1,n)
-yVals1 <- -m:m
-yVals <- sample(yVals1,m)
-xVals <- sort(xVals)
-yVals <- sort(yVals)
-
-# acum avem in xVals valorile variabilei aleatoare
-# X fiind niste numere aleatoare din intervalul -n -> n
-#analog pentru Y
-
-#in continuare 
-#generam probabilitatile variabilelor aleatoare X si Y
-
-xProbs <- runif(n)
-xProbs <- round(xProbs/sum(xProbs),2)
-
-yProbs <- runif(m)
-yProbs <- round(yProbs/sum(yProbs),2)
-
-#unim vectorii pentru a rezulta variabilele
-#aleatoare corespunzatoare
-
-X <- rbind(xVals,xProbs)
-Y <- rbind(yVals,yProbs)
-
-tabel <- matrix(Inf,nrow = n+1,ncol = m+1)
-tabel[n+1,m+1] <- 1 # Suma (pi) = Suma(qj) = 1
-
-#completam toate qj in afara de ultima 
-#care va fi ,, aflata" scazand suma de 1- sum(qj) j=1,n-1
-for(i in 1:(m-1)){
-  tabel[n+1,i] = Y[2,i]
+frepcomgen <- function(n,m){
+  xVals1 <- -n:n
+  xVals <- sample(xVals1,n)
+  yVals1 <- -m:m
+  yVals <- sample(yVals1,m)
+  
+  xVals <- sort(xVals)
+  yVals <- sort(yVals)
+  
+  # acum avem in xVals valorile variabilei aleatoare
+  # X fiind niste numere aleatoare din intervalul -n -> n
+  #analog pentru Y
+  
+  #in continuare 
+  #generam probabilitatile variabilelor aleatoare X si Y
+  
+  xProbs <- runif(n,0.02,1)
+  xProbs <- round(xProbs/sum(xProbs),2)
+  
+  yProbs <- runif(m,0.02,1)
+  yProbs <- round(yProbs/sum(yProbs),2)
+  
+  #unim vectorii pentru a rezulta variabilele
+  #aleatoare corespunzatoare
+  
+  X <- rbind(xVals,xProbs)
+  Y <- rbind(yVals,yProbs)
+  
+  tabel <- matrix(Inf,nrow = n+1,ncol = m+1)
+  tabel[n+1,m+1] <- 1 # Suma (pi) = Suma(qj) = 1
+  
+  #completam toate qj in afara de ultima 
+  #care va fi ,, aflata" scazand suma de 1- sum(qj) j=1,n-1
+  for(i in 1:(m-1)){
+    tabel[n+1,i] = Y[2,i]
+  }
+  #analog si pentru  pi
+  for(i in 1:(n-1)){
+    tabel[i,m+1] = X[2,i]
+  }
+  auxTable <- tabel
+  auxTable[n + 1, m] = Y[2, m]
+  auxTable[n, m + 1] = X[2, n]
+  #Generam destule valori (PI)ij pentru 
+  #ca tabelul sa poata fi completat ulterior
+  for(i in 1:(n - 1)){
+    emptyCell = round(runif(1,1,m));
+    for(j in 1:m){
+      if(j != emptyCell){
+        auxValue <- min(auxTable[i,m+1],auxTable[n+1,j])
+        auxValue <- auxValue - 0.1 * auxValue
+        tabel[i,j] <- runif(1,0.001,auxValue)
+        tabel[i, j] <- round(tabel[i,j],3)
+        auxTable[i,m+1] <- auxTable[i,m+1] - tabel[i,j]
+        auxTable[n+1,j] <- auxTable[n+1,j] - tabel[i,j]
+      }
+    }
+  }
+  xVals <- c(xVals,0)
+  yVals <- c(0,yVals,0)
+  #0 in coltul stanga sus,stanga jos si dreapta sus
+  tabel <- rbind(yVals,cbind(xVals,tabel))
+  return(tabel)
 }
 
-#analog si pentru  pi
-for(i in 1:(n-1)){
-  tabel[i,m+1] = X[2,i]
+fcomplrepcom <- function(tabel){
+  n <- nrow(tabel)
+  m <- ncol(tabel)
+  sumePartialeLinii <- vector("numeric", n)
+  for(i in 2:(n)){
+    sum <- 0
+    for(j in 2:(m-1))
+      if(tabel[i,j]!=Inf)
+        sum <- sum + tabel[i,j]
+    sumePartialeLinii[i] <- sum
+  }
+  sumePartialeColoane <- vector("numeric", m)
+  for(j in 2:m){
+    sum <- 0
+    for(i in 2:(n - 1))
+      if(tabel[i,j]!=Inf)
+        sum <- sum + tabel[i,j]
+    sumePartialeColoane[j] <- sum
+  }
+  tabel[n,m-1] <- 1 - sumePartialeLinii[n]
+  tabel[n - 1, m] <- 1 - sumePartialeColoane[m]
+  for(i in 2:(n-2)){
+    for(j in 2:(m-1))
+      if(tabel[i,j]==Inf){
+        tabel[i,j] = tabel[i,m] - sumePartialeLinii[i]
+        sumePartialeColoane[j] <- sumePartialeColoane[j] + tabel[i,j]
+      }
+  }
+  for(j in 2:(m-1))
+    tabel[n-1,j] <- tabel[n,j] - sumePartialeColoane[j]
+  return(tabel)
 }
 
-#Generam destule valori (PI)ij pentru 
-#ca tabelul sa poata fi completat ulterior
+fverind <- function(tabel){
+  ok <- 1
+  n <- nrow(tabel)
+  m <- ncol(tabel)
+  for(i in 2:(n - 1))
+    for(j in 2:(m - 1))
+      if(tabel[i,j] != tabel[n,j] * tabel[i, m])
+        ok <- 0
+  if(ok == 0)
+    print("X si Y nu sunt independente")
+  else
+    print("X si Y sunt independente")
+}
 
+fvernecor <- function(tabel){
+  n <- nrow(tabel)
+  m <- ncol(tabel)
+  medieX <- 0
+  for(i in 2:(n - 1))
+    medieX <- medieX + repComRez[i,1]
+  medieX <- medieX / n
+  medieY <- 0
+  for(j in 2:(m - 1))
+    medieY <- medieY + repComRez[1,j]
+  medieY <- medieY / m
+  cov <- 0
+  for(i in 2:(n - 1)){
+    for(j in 2:(m - 1))
+      cov <- cov + (repComRez[i,j] * (repComRez[i,1] - medieX) * (repComRez[1,j] - medieY))
+  }
+  if(cov == 0)
+    print("X si Y sunt necorelate")
+  else
+    print("X si Y sunt corelate")
+}
+#A se seta valoarea lui m si n
+#n <- as.numeric(readline(prompt="N = "))
+#m <- as.numeric(readline(prompt="M = "))
+n <- 4
+m <- 5
+repComGen <- frepcomgen(n,m)
+print(repComGen)
+repComRez <- fcomplrepcom(repComGen)
+print(repComRez)
+#Cov(5x,-3Y) = -15*Cov(x,y)
+medieX <- 0
+for(i in 2:(n+1))
+  medieX <- medieX + repComRez[i,1]
+medieX <- medieX / n
+medieY <- 0
+for(j in 2:(m+1))
+  medieY <- medieY + repComRez[1,j]
+medieY <- medieY / m
+cov <- 0
+for(i in 2:(n + 1)){
+  for(j in 2:(m + 1))
+    cov <- cov + (repComRez[i,j] * (repComRez[i,1] - medieX) * (repComRez[1,j] - medieY))
+}
+cov <- cov * (-15)
+cat("Cov(5x,-3Y) = ", cov,"\n")
+#P(0<X<3/Y>2) = P(X (1,2) intersectat Y > 2) / (1-p(Y<=2))
+xPoz <- vector("numeric",0)
+yPoz <- vector("numeric",0)
+for(i in 2:(n + 1))
+  if(repComRez[i,1] == 1 || repComRez[i,1] == 2)
+    xPoz <- c(xPoz,i)
+for( j in 2:(m + 1))
+  if(repComRez[1,j] > 2)
+     yPoz <- c(yPoz,j)
+if(length(xPoz) == 0 || length(yPoz) == 0){
+  print("P(0<X<3/Y>2) = 0")
+}else{
+  intersection <- 0
+  for(i in xPoz)
+    for(j in yPoz)
+      intersection <- intersection + repComRez[i,j]
+  #P(y>2)
+    prob <- 0
+    for(j in 2:(m+1))
+      if(repComRez[1 , j] <= 2)
+        prob <- prob + repComRez[n+2,j]
+    prob <- intersection/(1 - prob)
+    cat("P(0<X<3/Y>2) = ", prob)
+}
+#P(X>6,Y<7) = FXY(X>6 int Y<7)
+xPoz <- vector("numeric",0)
+yPoz <- vector("numeric",0)
+for(i in 2:(n + 1))
+  if(repComRez[i,1] > 6)
+    xPoz <- c(xPoz,i)
+for( j in 2:(m + 1))
+  if(repComRez[1,j] < 7)
+    yPoz <- c(yPoz,j)
+if(length(xPoz) == 0 || length(yPoz) == 0){
+  print("P(X>6,Y<7) = 0")
+}else{
+  intersection <- 0
+  for(i in xPoz)
+    for(j in yPoz)
+      intersection <- intersection + repComRez[i,j]
+    cat("P(X>6,Y<7) = ",intersection)
+}
 
+#fverind
+  fverind(repComRez)
+#fvernecor  
+  fvernecor(repComRez)
